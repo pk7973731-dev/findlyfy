@@ -8,6 +8,7 @@ import PostHistory from './components/post/PostHistory';
 
 function App() {
   const [session, setSession] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,15 +27,15 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen flex flex-col font-sans relative overflow-hidden">
-        {/* Decorative Background Orbs */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-brand-400/20 blur-[100px] -z-10 animate-pulse-slow pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] rounded-full bg-accent-400/20 blur-[100px] -z-10 animate-float pointer-events-none"></div>
+        {/* Subtle Background */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-brand-400/10 blur-[120px] -z-10 pointer-events-none"></div>
+        <div className="absolute bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] rounded-full bg-accent-400/10 blur-[120px] -z-10 pointer-events-none"></div>
 
-        <Navbar session={session} />
+        <Navbar session={session} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
         <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 z-10">
           <Routes>
-            <Route path="/" element={<Feed session={session} />} />
+            <Route path="/" element={<Feed session={session} searchQuery={searchQuery} />} />
             <Route
               path="/post"
               element={session ? <CreatePostForm session={session} /> : <Navigate to="/" />}

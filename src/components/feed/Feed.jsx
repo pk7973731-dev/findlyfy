@@ -3,9 +3,10 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import PostCard from './PostCard';
 
-export default function Feed({ activeCategory = 'all', session }) {
+export default function Feed({ session, searchQuery = '' }) {
     const [posts, setPosts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [activeFilter, setActiveFilter] = useState('all');
 
     useEffect(() => {
         const fetchPosts = async () => {
@@ -27,7 +28,6 @@ export default function Feed({ activeCategory = 'all', session }) {
 
         fetchPosts();
 
-        // Listen for real-time insert/update/delete on posts table
         const channel = supabase.channel('feed-updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
                 fetchPosts();
@@ -37,15 +37,33 @@ export default function Feed({ activeCategory = 'all', session }) {
         return () => supabase.removeChannel(channel);
     }, []);
 
-    const filteredPosts = activeCategory === 'all'
+    // Filter by type (all / lost / found)
+    let filteredPosts = activeFilter === 'all'
         ? posts
-        : posts.filter(post => post.category === activeCategory);
+        : posts.filter(post => post.type === activeFilter);
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filteredPosts = filteredPosts.filter(post =>
+            post.title?.toLowerCase().includes(query) ||
+            post.description?.toLowerCase().includes(query) ||
+            post.location?.toLowerCase().includes(query) ||
+            post.category?.toLowerCase().includes(query)
+        );
+    }
+
+    const filters = [
+        { id: 'all', label: 'All' },
+        { id: 'lost', label: 'Lost' },
+        { id: 'found', label: 'Found' },
+    ];
 
     return (
         <div className="flex-1 w-full mx-auto space-y-6 animate-fade-up">
 
-            {/* Clean Professional Header */}
-            <div className="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Header */}
+            <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-2">
                         Campus Feed
@@ -55,19 +73,30 @@ export default function Feed({ activeCategory = 'all', session }) {
                     </p>
                 </div>
 
-                {/* Filters */}
+                {/* Filter Tabs */}
                 <div className="inline-flex items-center p-1 bg-slate-100 rounded-lg border border-slate-200/60 self-start sm:self-auto">
-                    <button className="px-4 py-1.5 rounded-md bg-white text-slate-900 font-semibold shadow-sm border border-slate-200/50 text-sm transition-all">
-                        All
-                    </button>
-                    <button className="px-4 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-medium text-sm transition-all hover:bg-slate-200/50">
-                        Lost
-                    </button>
-                    <button className="px-4 py-1.5 rounded-md text-slate-600 hover:text-slate-900 font-medium text-sm transition-all hover:bg-slate-200/50">
-                        Found
-                    </button>
+                    {filters.map(filter => (
+                        <button
+                            key={filter.id}
+                            onClick={() => setActiveFilter(filter.id)}
+                            className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all ${activeFilter === filter.id
+                                    ? 'bg-white text-slate-900 border border-slate-200/50'
+                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 border border-transparent'
+                                }`}
+                        >
+                            {filter.label}
+                        </button>
+                    ))}
                 </div>
             </div>
+
+            {/* Search indicator */}
+            {searchQuery.trim() && (
+                <div className="text-sm text-slate-500 px-1">
+                    Showing results for "<span className="font-semibold text-slate-700">{searchQuery}</span>"
+                    {filteredPosts.length > 0 && ` — ${filteredPosts.length} item${filteredPosts.length !== 1 ? 's' : ''}`}
+                </div>
+            )}
 
             {/* Post List */}
             <div className="space-y-6 flex flex-col pb-24">
@@ -92,7 +121,7 @@ export default function Feed({ activeCategory = 'all', session }) {
                             </svg>
                         </div>
                         <h3 className="text-lg font-medium text-slate-900 mb-1">No items found</h3>
-                        <p>We couldn't find any items matching this category.</p>
+                        <p>{searchQuery ? 'Try a different search term.' : "No items match this filter."}</p>
                     </div>
                 )}
             </div>

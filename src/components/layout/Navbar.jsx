@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Bell, User, LogIn, LogOut, Mail, Lock, Loader2, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Bell, User, LogIn, LogOut, Mail, Lock, Loader2, X, MessageSquare, Hand } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { formatDistanceToNow } from 'date-fns';
 
-export default function Navbar({ session }) {
+export default function Navbar({ session, searchQuery, setSearchQuery }) {
+    const navigate = useNavigate();
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
@@ -101,6 +103,80 @@ export default function Navbar({ session }) {
         await supabase.auth.signOut();
     };
 
+    // Notification state
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [notifCount, setNotifCount] = useState(0);
+    const notifRef = useRef(null);
+
+    // Close notifications on outside click
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (notifRef.current && !notifRef.current.contains(e.target)) {
+                setShowNotifications(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // Fetch notifications (claims + comments on user's posts)
+    const fetchNotifications = async () => {
+        if (!session?.user?.id) return;
+
+        try {
+            // Get claims on user's posts
+            const { data: claims } = await supabase
+                .from('claims')
+                .select('*, posts!inner(title, user_id), profiles:profiles!claims_claimer_id_fkey(full_name)')
+                .eq('posts.user_id', session.user.id)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            // Get comments on user's posts
+            const { data: comments } = await supabase
+                .from('comments')
+                .select('*, posts!inner(title, user_id), profiles:profiles!comments_profiles_fk(full_name)')
+                .eq('posts.user_id', session.user.id)
+                .neq('user_id', session.user.id)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            const allNotifs = [
+                ...(claims || []).map(c => ({
+                    id: 'claim-' + c.id,
+                    type: 'claim',
+                    text: `${c.profiles?.full_name || 'Someone'} responded to your post "${c.posts?.title}"`,
+                    time: c.created_at,
+                })),
+                ...(comments || []).map(c => ({
+                    id: 'comment-' + c.id,
+                    type: 'comment',
+                    text: `${c.profiles?.full_name || 'Someone'} commented on "${c.posts?.title}"`,
+                    time: c.created_at,
+                })),
+            ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 15);
+
+            setNotifications(allNotifs);
+            setNotifCount(allNotifs.length);
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    };
+
+    const toggleNotifications = () => {
+        if (!showNotifications) fetchNotifications();
+        setShowNotifications(!showNotifications);
+    };
+
+    // Handle search
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+        if (window.location.pathname !== '/') {
+            navigate('/');
+        }
+    };
+
     return (
         <>
             <nav className="sticky top-4 z-50 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4 transition-all duration-300">
@@ -131,6 +207,8 @@ export default function Navbar({ session }) {
                                 </div>
                                 <input
                                     type="text"
+                                    value={searchQuery}
+                                    onChange={handleSearchChange}
                                     className="block w-full pl-10 pr-3 py-2.5 bg-slate-100/50 border border-slate-200/60 rounded-xl leading-5 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-all"
                                     placeholder="Search for items, buildings..."
                                 />
@@ -139,10 +217,48 @@ export default function Navbar({ session }) {
 
                         {/* Right side actions */}
                         <div className="flex items-center gap-4">
-                            <button className="text-slate-500 hover:text-slate-700 relative p-2 transition">
-                                <Bell className="h-5 w-5" />
-                                <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-                            </button>
+                            <div className="relative" ref={notifRef}>
+                                <button
+                                    onClick={toggleNotifications}
+                                    className="text-slate-500 hover:text-slate-700 relative p-2 transition"
+                                >
+                                    <Bell className="h-5 w-5" />
+                                    {session && notifCount > 0 && (
+                                        <span className="absolute top-1 right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+                                    )}
+                                </button>
+
+                                {/* Notification Dropdown */}
+                                {showNotifications && (
+                                    <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl overflow-hidden z-50">
+                                        <div className="px-4 py-3 border-b border-slate-100">
+                                            <h3 className="font-bold text-sm text-slate-900">Notifications</h3>
+                                        </div>
+                                        <div className="max-h-72 overflow-y-auto">
+                                            {!session ? (
+                                                <p className="text-sm text-slate-400 text-center py-6">Sign in to see notifications</p>
+                                            ) : notifications.length === 0 ? (
+                                                <p className="text-sm text-slate-400 text-center py-6">No notifications yet</p>
+                                            ) : (
+                                                notifications.map(notif => (
+                                                    <div key={notif.id} className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0">
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${notif.type === 'claim' ? 'bg-brand-50 text-brand-600' : 'bg-emerald-50 text-emerald-600'
+                                                            }`}>
+                                                            {notif.type === 'claim' ? <Hand className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm text-slate-700 leading-snug">{notif.text}</p>
+                                                            <p className="text-xs text-slate-400 mt-1">
+                                                                {formatDistanceToNow(new Date(notif.time), { addSuffix: true })}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             {session ? (
                                 <div className="flex items-center gap-3">
