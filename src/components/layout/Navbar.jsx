@@ -267,13 +267,8 @@ export default function Navbar({ session, searchQuery, setSearchQuery }) {
                                     >
                                         <LogOut className="h-5 w-5" />
                                     </button>
-                                    <div className="flex items-center gap-2 p-1 pr-3 rounded-full border border-slate-200 bg-white/50">
-                                        <div className="h-8 w-8 rounded-full bg-brand-100 overflow-hidden flex items-center justify-center">
-                                            <User className="h-5 w-5 text-brand-600" />
-                                        </div>
-                                        <span className="text-sm font-medium text-slate-700 max-w-[120px] truncate">
-                                            {session.user.email?.split('@')[0]}
-                                        </span>
+                                    <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center border border-slate-200">
+                                        <User className="h-4 w-4 text-brand-600" />
                                     </div>
                                 </div>
                             ) : (
