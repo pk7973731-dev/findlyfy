@@ -164,7 +164,7 @@ export default function PostCard({ post, currentUserId }) {
     };
 
     return (
-        <div className="glass-card rounded-3xl overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+        <div className="glass-card rounded-2xl overflow-hidden hover:border-slate-300 transition-all duration-300">
 
             {/* Image if available */}
             {post.image_url && (
@@ -175,9 +175,9 @@ export default function PostCard({ post, currentUserId }) {
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute top-4 left-4">
-                        <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-md shadow-lg ${post.type === 'lost'
-                            ? 'bg-rose-500/90 text-white border border-rose-400/50 shadow-rose-500/30'
-                            : 'bg-emerald-500/90 text-white border border-emerald-400/50 shadow-emerald-500/30'
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${post.type === 'lost'
+                            ? 'bg-rose-500/90 text-white'
+                            : 'bg-emerald-500/90 text-white'
                             }`}>
                             {post.type} ITEM
                         </span>
@@ -189,7 +189,7 @@ export default function PostCard({ post, currentUserId }) {
                 {/* Header without image */}
                 {!post.image_url && (
                     <div className="mb-5">
-                        <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-md inline-block ${post.type === 'lost'
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-block ${post.type === 'lost'
                             ? 'bg-rose-100 text-rose-700 border border-rose-200'
                             : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                             }`}>
@@ -250,8 +250,8 @@ export default function PostCard({ post, currentUserId }) {
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 justify-center ${claimed
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default'
                                 : post.type === 'lost'
-                                    ? 'bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white shadow-lg shadow-brand-500/20 hover:-translate-y-0.5'
-                                    : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20 hover:-translate-y-0.5'
+                                    ? 'bg-brand-600 hover:bg-brand-700 text-white'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                                 }`}
                         >
                             {claimed ? (

@@ -104,13 +104,13 @@ export default function Navbar({ session }) {
     return (
         <>
             <nav className="sticky top-4 z-50 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4 transition-all duration-300">
-                <div className="glass-card rounded-2xl shadow-lg border border-white/60 px-4 sm:px-6">
+                <div className="glass-card rounded-2xl border border-slate-200 px-4 sm:px-6">
                     <div className="flex justify-between h-16 items-center">
 
                         {/* Logo & Main Nav */}
                         <div className="flex items-center gap-8">
                             <Link to="/" className="flex items-center gap-2 group">
-                                <div className="w-10 h-10 bg-gradient-to-tr from-brand-600 to-brand-400 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/30 group-hover:shadow-brand-500/50 transition-all duration-300 transform group-hover:-translate-y-0.5">
+                                <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center transition-all duration-300">
                                     <span className="text-white font-black text-xl">F</span>
                                 </div>
                                 <span className="font-extrabold text-2xl text-slate-800 tracking-tight">Findlyfy</span>
@@ -131,7 +131,7 @@ export default function Navbar({ session }) {
                                 </div>
                                 <input
                                     type="text"
-                                    className="block w-full pl-10 pr-3 py-2.5 bg-slate-100/50 border border-slate-200/60 rounded-xl leading-5 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-all shadow-inner"
+                                    className="block w-full pl-10 pr-3 py-2.5 bg-slate-100/50 border border-slate-200/60 rounded-xl leading-5 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 sm:text-sm transition-all"
                                     placeholder="Search for items, buildings..."
                                 />
                             </div>
@@ -165,7 +165,7 @@ export default function Navbar({ session }) {
                             ) : (
                                 <button
                                     onClick={() => setShowAuthModal(true)}
-                                    className="flex items-center gap-2 p-2 px-5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 text-white hover:from-brand-500 hover:to-brand-400 font-bold transition-all shadow-lg shadow-brand-500/30 transform hover:-translate-y-0.5"
+                                    className="flex items-center gap-2 p-2 px-5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 font-bold transition-all"
                                 >
                                     <LogIn className="h-4 w-4" />
                                     <span>Sign In</span>
@@ -179,7 +179,7 @@ export default function Navbar({ session }) {
             {/* Auth Modal Overlay */}
             {showAuthModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-up">
-                    <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-8 relative">
+                    <div ref={modalRef} className="bg-white rounded-2xl shadow-lg w-full max-w-md mx-4 p-8 relative">
                         <button
                             onClick={() => { setShowAuthModal(false); resetForm(); }}
                             className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 transition"
@@ -188,7 +188,7 @@ export default function Navbar({ session }) {
                         </button>
 
                         <div className="text-center mb-6">
-                            <div className="w-14 h-14 bg-gradient-to-tr from-brand-600 to-brand-400 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand-500/30">
+                            <div className="w-14 h-14 bg-brand-600 rounded-xl flex items-center justify-center mx-auto mb-4">
                                 <span className="text-white font-black text-2xl">F</span>
                             </div>
                             <h2 className="text-2xl font-bold text-slate-900">

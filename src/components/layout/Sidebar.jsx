@@ -13,7 +13,7 @@ export default function Sidebar() {
     return (
         <div className="w-64 flex-shrink-0 hidden lg:block animate-fade-up">
             {/* Categories Card */}
-            <div className="glass-card rounded-2xl shadow-sm border border-white/60 p-4 mb-6">
+            <div className="glass-card rounded-2xl border border-slate-200 p-4 mb-6">
                 <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-4 px-3">
                     Categories
                 </h3>
@@ -24,7 +24,7 @@ export default function Sidebar() {
                             <button
                                 key={category.id}
                                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${category.active
-                                    ? 'bg-brand-50/80 text-brand-700 shadow-sm border border-brand-100/50'
+                                    ? 'bg-brand-50 text-brand-700 border border-brand-100'
                                     : 'text-slate-600 hover:bg-slate-100/50 hover:text-slate-900 border border-transparent'
                                     }`}
                             >
@@ -37,7 +37,7 @@ export default function Sidebar() {
             </div>
 
             {/* Safety Guidelines Card */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-brand-900 to-slate-900 rounded-2xl p-6 border border-brand-800 shadow-lg group">
+            <div className="relative overflow-hidden bg-slate-900 rounded-2xl p-6 border border-slate-800">
                 {/* Decorative glow */}
                 <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-brand-500 rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity"></div>
 
