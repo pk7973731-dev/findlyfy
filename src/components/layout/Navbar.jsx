@@ -288,9 +288,9 @@ export default function Navbar({ session, searchQuery, setSearchQuery }) {
                 </div>
             </nav>
 
-            {/* Mobile Search Bar — slides down below navbar */}
+            {/* Mobile Search Bar — below navbar */}
             {showMobileSearch && (
-                <div className="lg:hidden sticky top-20 z-40 w-full max-w-7xl mx-auto px-4 sm:px-6 mb-4 animate-fade-up">
+                <div className="lg:hidden w-full max-w-7xl mx-auto px-4 sm:px-6 mb-4">
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Search className="h-4 w-4 text-slate-400" />
