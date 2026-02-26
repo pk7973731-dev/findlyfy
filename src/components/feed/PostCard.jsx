@@ -19,23 +19,25 @@ export default function PostCard({ post, currentUserId }) {
         return name ? name.charAt(0).toUpperCase() : '?';
     };
 
-    // Check if user already claimed this post on load
+    // Check claim status and counts on load
     useEffect(() => {
-        if (!currentUserId || isOwner) return;
+        if (!currentUserId) return;
 
         const checkExistingClaim = async () => {
             try {
-                // Check if current user already claimed
-                const { data: myClaim } = await supabase
-                    .from('claims')
-                    .select('id')
-                    .eq('post_id', post.id)
-                    .eq('claimer_id', currentUserId)
-                    .maybeSingle();
+                // Check if current user already claimed (skip for owner)
+                if (!isOwner) {
+                    const { data: myClaim } = await supabase
+                        .from('claims')
+                        .select('id')
+                        .eq('post_id', post.id)
+                        .eq('claimer_id', currentUserId)
+                        .maybeSingle();
 
-                if (myClaim) setClaimed(true);
+                    if (myClaim) setClaimed(true);
+                }
 
-                // Get total claim count
+                // Get total claim count (for everyone)
                 const { count } = await supabase
                     .from('claims')
                     .select('*', { count: 'exact', head: true })
@@ -242,39 +244,44 @@ export default function PostCard({ post, currentUserId }) {
                 {/* Action Buttons Row */}
                 <div className="flex items-center justify-between pt-3 gap-2">
 
-                    {/* Claim Button — I Found This / This is Mine */}
-                    {!isOwner && (
+                    {/* Claim Button / Status — visibility rules */}
+                    {isOwner ? (
+                        /* Owner always sees status */
+                        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-1 justify-center ${claimCount > 0
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-slate-50 text-slate-500 border border-slate-200'
+                            }`}>
+                            {claimCount > 0 ? (
+                                <>
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    {claimCount} {claimCount === 1 ? 'person' : 'people'} responded
+                                </>
+                            ) : (
+                                <>
+                                    <AlertCircle className="w-4 h-4" />
+                                    No reports yet
+                                </>
+                            )}
+                        </div>
+                    ) : claimed ? (
+                        /* Non-owner who already claimed sees Reported status */
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-sm font-bold flex-1 justify-center cursor-default">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{post.type === 'lost' ? 'Reported Found' : 'Claimed'}</span>
+                            {claimCount > 0 && <span className="text-xs opacity-75">({claimCount})</span>}
+                        </div>
+                    ) : (
+                        /* Non-owner who hasn't claimed sees clickable button */
                         <button
                             onClick={handleClaim}
-                            disabled={claimed}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 justify-center ${claimed
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default'
-                                : post.type === 'lost'
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 justify-center ${post.type === 'lost'
                                     ? 'bg-brand-600 hover:bg-brand-700 text-white'
                                     : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                                 }`}
                         >
-                            {claimed ? (
-                                <>
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    <span>{post.type === 'lost' ? 'Reported Found' : 'Claimed'}</span>
-                                    {claimCount > 0 && <span className="text-xs opacity-75">({claimCount})</span>}
-                                </>
-                            ) : (
-                                <>
-                                    {post.type === 'lost' ? <Hand className="w-4 h-4" /> : <Package className="w-4 h-4" />}
-                                    <span>{post.type === 'lost' ? 'I Found This!' : 'This is Mine!'}</span>
-                                </>
-                            )}
+                            {post.type === 'lost' ? <Hand className="w-4 h-4" /> : <Package className="w-4 h-4" />}
+                            <span>{post.type === 'lost' ? 'I Found This!' : 'This is Mine!'}</span>
                         </button>
-                    )}
-
-                    {/* Owner sees claim count */}
-                    {isOwner && claimCount > 0 && (
-                        <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-sm font-semibold flex-1 justify-center">
-                            <AlertCircle className="w-4 h-4" />
-                            {claimCount} {claimCount === 1 ? 'person' : 'people'} responded
-                        </div>
                     )}
 
                     {/* Comment Button */}
