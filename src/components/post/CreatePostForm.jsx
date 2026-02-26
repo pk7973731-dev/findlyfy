@@ -211,7 +211,7 @@ export default function CreatePostForm({ session }) {
                                     required
                                     value={formData.location}
                                     onChange={(e) => updateForm('location', e.target.value)}
-                                    placeholder="e.g., Student Union, 2nd Floor"
+                                    placeholder="e.g., Central Library"
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all outline-none"
                                 />
                             </div>
