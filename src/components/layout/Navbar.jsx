@@ -231,7 +231,7 @@ export default function Navbar({ session, searchQuery, setSearchQuery }) {
 
                                 {/* Notification Dropdown */}
                                 {showNotifications && (
-                                    <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl overflow-hidden z-50">
+                                    <div className="fixed sm:absolute left-2 right-2 sm:left-auto sm:right-0 top-20 sm:top-full sm:mt-2 sm:w-80 bg-white border border-slate-200 rounded-xl overflow-hidden z-50 shadow-lg">
                                         <div className="px-4 py-3 border-b border-slate-100">
                                             <h3 className="font-bold text-sm text-slate-900">Notifications</h3>
                                         </div>
