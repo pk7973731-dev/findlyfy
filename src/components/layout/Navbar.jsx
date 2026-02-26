@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, User, LogIn, LogOut, Mail, Lock, Loader2, X, MessageSquare, Hand } from 'lucide-react';
+import { Search, Bell, User, LogIn, LogOut, Mail, Lock, Loader2, X, MessageSquare, Hand, Home, PlusCircle, ClockArrowUp } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -177,6 +177,9 @@ export default function Navbar({ session, searchQuery, setSearchQuery }) {
         }
     };
 
+    // Mobile search toggle
+    const [showMobileSearch, setShowMobileSearch] = useState(false);
+
     return (
         <>
             <nav className="sticky top-4 z-50 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-4 transition-all duration-300">
@@ -277,13 +280,82 @@ export default function Navbar({ session, searchQuery, setSearchQuery }) {
                                     className="flex items-center gap-2 p-2 px-5 rounded-xl bg-brand-600 text-white hover:bg-brand-700 font-bold transition-all"
                                 >
                                     <LogIn className="h-4 w-4" />
-                                    <span>Sign In</span>
+                                    <span className="hidden sm:inline">Sign In</span>
                                 </button>
                             )}
                         </div>
                     </div>
                 </div>
             </nav>
+
+            {/* Mobile Search Bar — slides down below navbar */}
+            {showMobileSearch && (
+                <div className="lg:hidden sticky top-20 z-40 w-full max-w-7xl mx-auto px-4 sm:px-6 mb-4 animate-fade-up">
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={handleSearchChange}
+                            autoFocus
+                            className="block w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-xl placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-sm transition-all"
+                            placeholder="Search for items, buildings..."
+                        />
+                        <button
+                            onClick={() => { setShowMobileSearch(false); setSearchQuery(''); }}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Mobile Bottom Navigation */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200">
+                <div className="flex items-center justify-around py-2">
+                    <Link to="/" className="flex flex-col items-center gap-0.5 px-3 py-1 text-slate-500 hover:text-brand-600 transition">
+                        <Home className="h-5 w-5" />
+                        <span className="text-[10px] font-medium">Home</span>
+                    </Link>
+                    <button
+                        onClick={() => setShowMobileSearch(!showMobileSearch)}
+                        className={`flex flex-col items-center gap-0.5 px-3 py-1 transition ${showMobileSearch ? 'text-brand-600' : 'text-slate-500 hover:text-brand-600'}`}
+                    >
+                        <Search className="h-5 w-5" />
+                        <span className="text-[10px] font-medium">Search</span>
+                    </button>
+                    <Link to="/post" className="flex flex-col items-center gap-0.5 px-3 py-1">
+                        <div className="bg-brand-600 text-white rounded-full p-2 -mt-3">
+                            <PlusCircle className="h-5 w-5" />
+                        </div>
+                        <span className="text-[10px] font-medium text-brand-600">Post</span>
+                    </Link>
+                    <Link to="/my-posts" className="flex flex-col items-center gap-0.5 px-3 py-1 text-slate-500 hover:text-brand-600 transition">
+                        <ClockArrowUp className="h-5 w-5" />
+                        <span className="text-[10px] font-medium">History</span>
+                    </Link>
+                    {session ? (
+                        <button
+                            onClick={handleLogout}
+                            className="flex flex-col items-center gap-0.5 px-3 py-1 text-slate-500 hover:text-rose-600 transition"
+                        >
+                            <LogOut className="h-5 w-5" />
+                            <span className="text-[10px] font-medium">Logout</span>
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => setShowAuthModal(true)}
+                            className="flex flex-col items-center gap-0.5 px-3 py-1 text-slate-500 hover:text-brand-600 transition"
+                        >
+                            <LogIn className="h-5 w-5" />
+                            <span className="text-[10px] font-medium">Sign In</span>
+                        </button>
+                    )}
+                </div>
+            </div>
 
             {/* Auth Modal Overlay */}
             {showAuthModal && (
