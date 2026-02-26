@@ -186,7 +186,7 @@ export default function Navbar({ session, searchQuery, setSearchQuery }) {
                         {/* Logo & Main Nav */}
                         <div className="flex items-center gap-8">
                             <Link to="/" className="flex items-center gap-2 group">
-                                <img src="/logo.svg" alt="LostBuddy" className="w-10 h-10 rounded-xl" />
+                                <img src="/logo.png" alt="LostBuddy" className="w-10 h-10 rounded-xl" />
                                 <span className="font-extrabold text-2xl text-slate-800 tracking-tight">LostBuddy</span>
                             </Link>
 
@@ -297,7 +297,7 @@ export default function Navbar({ session, searchQuery, setSearchQuery }) {
                         </button>
 
                         <div className="text-center mb-6">
-                            <img src="/logo.svg" alt="LostBuddy" className="w-14 h-14 rounded-xl mx-auto mb-4" />
+                            <img src="/logo.png" alt="LostBuddy" className="w-14 h-14 rounded-xl mx-auto mb-4" />
                             <h2 className="text-2xl font-bold text-slate-900">
                                 {isSignUp ? 'Create Account' : 'Welcome Back'}
                             </h2>
