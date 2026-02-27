@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 
 export default function PostCard({ post, currentUserId }) {
     const isOwner = currentUserId === post.user_id;
+    const isResolved = post.status === 'resolved';
     const [claimed, setClaimed] = useState(false);
     const [claimCount, setClaimCount] = useState(0);
     const [linkCopied, setLinkCopied] = useState(false);
@@ -166,7 +167,7 @@ export default function PostCard({ post, currentUserId }) {
     };
 
     return (
-        <div className="glass-card rounded-2xl overflow-hidden hover:border-slate-300 transition-all duration-300">
+        <div className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${isResolved ? 'opacity-70' : 'hover:border-slate-300'}`}>
 
             {/* Image if available */}
             {post.image_url && (
@@ -176,13 +177,18 @@ export default function PostCard({ post, currentUserId }) {
                         alt={post.title}
                         className="w-full h-full object-cover"
                     />
-                    <div className="absolute top-4 left-4">
+                    <div className="absolute top-4 left-4 flex items-center gap-2">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${post.type === 'lost'
                             ? 'bg-rose-500/90 text-white'
                             : 'bg-emerald-500/90 text-white'
                             }`}>
                             {post.type} ITEM
                         </span>
+                        {isResolved && (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/90 text-white">
+                                ✓ RESOLVED
+                            </span>
+                        )}
                     </div>
                 </div>
             )}
@@ -190,13 +196,18 @@ export default function PostCard({ post, currentUserId }) {
             <div className="p-5 sm:p-6">
                 {/* Header without image */}
                 {!post.image_url && (
-                    <div className="mb-5">
+                    <div className="mb-5 flex items-center gap-2">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-block ${post.type === 'lost'
                             ? 'bg-rose-100 text-rose-700 border border-rose-200'
                             : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
                             }`}>
                             {post.type} ITEM
                         </span>
+                        {isResolved && (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider inline-block bg-green-100 text-green-700 border border-green-200">
+                                ✓ RESOLVED
+                            </span>
+                        )}
                     </div>
                 )}
 
@@ -245,11 +256,17 @@ export default function PostCard({ post, currentUserId }) {
                 <div className="flex items-center justify-between pt-3 gap-2">
 
                     {/* Claim Button / Status — visibility rules */}
-                    {isOwner ? (
+                    {isResolved ? (
+                        /* Post is resolved — show resolved status for everyone */
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-semibold flex-1 justify-center">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Resolved — Item returned</span>
+                        </div>
+                    ) : isOwner ? (
                         /* Owner always sees status */
                         <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-1 justify-center ${claimCount > 0
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-slate-50 text-slate-500 border border-slate-200'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-slate-50 text-slate-500 border border-slate-200'
                             }`}>
                             {claimCount > 0 ? (
                                 <>
@@ -275,8 +292,8 @@ export default function PostCard({ post, currentUserId }) {
                         <button
                             onClick={handleClaim}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-1 justify-center ${post.type === 'lost'
-                                    ? 'bg-brand-600 hover:bg-brand-700 text-white'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                ? 'bg-brand-600 hover:bg-brand-700 text-white'
+                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                                 }`}
                         >
                             {post.type === 'lost' ? <Hand className="w-4 h-4" /> : <Package className="w-4 h-4" />}
