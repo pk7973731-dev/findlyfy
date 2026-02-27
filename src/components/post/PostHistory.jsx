@@ -35,20 +35,10 @@ export default function PostHistory({ session }) {
     const handleDelete = async (postId) => {
         setActionLoading(postId);
         try {
-            // Delete related claims first (foreign key constraint)
-            const { error: claimErr } = await supabase.from('claims').delete().eq('post_id', postId);
-            if (claimErr) console.warn('Claims delete:', claimErr.message);
-
-            // Delete related comments (foreign key constraint)
-            const { error: commentErr } = await supabase.from('comments').delete().eq('post_id', postId);
-            if (commentErr) console.warn('Comments delete:', commentErr.message);
-
-            // Now delete the post itself
-            const { error } = await supabase
-                .from('posts')
-                .delete()
-                .eq('id', postId)
-                .eq('user_id', session.user.id);
+            // Use database function to handle cascade delete
+            const { error } = await supabase.rpc('delete_user_post', {
+                p_post_id: postId
+            });
 
             if (error) throw error;
             setPosts(prev => prev.filter(p => p.id !== postId));
@@ -133,14 +123,14 @@ export default function PostHistory({ session }) {
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${post.type === 'lost'
-                                                ? 'bg-rose-100 text-rose-700'
-                                                : 'bg-emerald-100 text-emerald-700'
+                                            ? 'bg-rose-100 text-rose-700'
+                                            : 'bg-emerald-100 text-emerald-700'
                                             }`}>
                                             {post.type}
                                         </span>
                                         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${post.status === 'resolved'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-blue-100 text-blue-700'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-blue-100 text-blue-700'
                                             }`}>
                                             {post.status || 'active'}
                                         </span>
@@ -188,8 +178,8 @@ export default function PostHistory({ session }) {
                                         onClick={() => handleToggleStatus(post.id, post.status)}
                                         disabled={actionLoading === post.id}
                                         className={`flex items-center justify-center gap-2 flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all ${post.status === 'resolved'
-                                                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
                                             }`}
                                     >
                                         {actionLoading === post.id ? (
