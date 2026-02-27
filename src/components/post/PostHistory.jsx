@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Loader2, Trash2, CheckCircle, RotateCcw } from 'lucide-react';
+import { Loader2, Trash2, CheckCircle, RotateCcw, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function PostHistory({ session }) {
     const [posts, setPosts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [actionLoading, setActionLoading] = useState(null); // track which post action is loading
+    const [actionLoading, setActionLoading] = useState(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null); // inline confirmation
 
     useEffect(() => {
         if (!session?.user) return;
@@ -32,24 +33,26 @@ export default function PostHistory({ session }) {
     }, [session]);
 
     const handleDelete = async (postId) => {
-        if (!window.confirm('Are you sure you want to delete this post? This cannot be undone.')) return;
-
         setActionLoading(postId);
         try {
             // Delete related claims first (foreign key constraint)
-            await supabase.from('claims').delete().eq('post_id', postId);
+            const { error: claimErr } = await supabase.from('claims').delete().eq('post_id', postId);
+            if (claimErr) console.warn('Claims delete:', claimErr.message);
 
             // Delete related comments (foreign key constraint)
-            await supabase.from('comments').delete().eq('post_id', postId);
+            const { error: commentErr } = await supabase.from('comments').delete().eq('post_id', postId);
+            if (commentErr) console.warn('Comments delete:', commentErr.message);
 
             // Now delete the post itself
             const { error } = await supabase
                 .from('posts')
                 .delete()
-                .eq('id', postId);
+                .eq('id', postId)
+                .eq('user_id', session.user.id);
 
             if (error) throw error;
-            setPosts(posts.filter(p => p.id !== postId));
+            setPosts(prev => prev.filter(p => p.id !== postId));
+            setConfirmDeleteId(null);
         } catch (error) {
             console.error('Error deleting post:', error);
             alert('Failed to delete post. Error: ' + (error.message || 'Unknown error'));
@@ -68,7 +71,7 @@ export default function PostHistory({ session }) {
                 .eq('id', postId);
 
             if (error) throw error;
-            setPosts(posts.map(p => p.id === postId ? { ...p, status: newStatus } : p));
+            setPosts(prev => prev.map(p => p.id === postId ? { ...p, status: newStatus } : p));
         } catch (error) {
             console.error('Error updating post status:', error);
             alert('Failed to update status. Error: ' + (error.message || 'Unknown error'));
@@ -148,46 +151,71 @@ export default function PostHistory({ session }) {
                                 </div>
                             </div>
 
-                            {/* Action buttons row - full width for mobile */}
-                            <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
-                                <button
-                                    onClick={() => handleToggleStatus(post.id, post.status)}
-                                    disabled={actionLoading === post.id}
-                                    className={`flex items-center justify-center gap-2 flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all ${post.status === 'resolved'
-                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                            : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                                        }`}
-                                >
-                                    {actionLoading === post.id ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : post.status === 'resolved' ? (
-                                        <>
-                                            <RotateCcw className="w-4 h-4" />
-                                            <span>Reopen</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle className="w-4 h-4" />
-                                            <span>Resolve</span>
-                                        </>
-                                    )}
-                                </button>
+                            {/* Inline delete confirmation */}
+                            {confirmDeleteId === post.id ? (
+                                <div className="mt-4 pt-3 border-t border-rose-100 bg-rose-50 -mx-5 -mb-5 px-5 py-4 rounded-b-2xl">
+                                    <p className="text-sm font-semibold text-rose-700 mb-3">
+                                        Are you sure you want to delete this post? This cannot be undone.
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleDelete(post.id)}
+                                            disabled={actionLoading === post.id}
+                                            className="flex items-center justify-center gap-2 flex-1 py-2.5 px-4 rounded-xl text-sm font-bold bg-rose-600 text-white hover:bg-rose-700 transition-all"
+                                        >
+                                            {actionLoading === post.id ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <>
+                                                    <Trash2 className="w-4 h-4" />
+                                                    <span>Yes, Delete</span>
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => setConfirmDeleteId(null)}
+                                            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-all"
+                                        >
+                                            <X className="w-4 h-4" />
+                                            <span>Cancel</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Action buttons row */
+                                <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-100">
+                                    <button
+                                        onClick={() => handleToggleStatus(post.id, post.status)}
+                                        disabled={actionLoading === post.id}
+                                        className={`flex items-center justify-center gap-2 flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all ${post.status === 'resolved'
+                                                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                                            }`}
+                                    >
+                                        {actionLoading === post.id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : post.status === 'resolved' ? (
+                                            <>
+                                                <RotateCcw className="w-4 h-4" />
+                                                <span>Reopen</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <CheckCircle className="w-4 h-4" />
+                                                <span>Resolve</span>
+                                            </>
+                                        )}
+                                    </button>
 
-                                <button
-                                    onClick={() => handleDelete(post.id)}
-                                    disabled={actionLoading === post.id}
-                                    className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all"
-                                >
-                                    {actionLoading === post.id ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                        <>
-                                            <Trash2 className="w-4 h-4" />
-                                            <span>Delete</span>
-                                        </>
-                                    )}
-                                </button>
-                            </div>
+                                    <button
+                                        onClick={() => setConfirmDeleteId(post.id)}
+                                        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
