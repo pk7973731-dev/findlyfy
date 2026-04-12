@@ -16,6 +16,13 @@ export default function PostCard({ post, currentUserId }) {
     const [postingComment, setPostingComment] = useState(false);
     const [commentCount, setCommentCount] = useState(post.comment_count || 0);
 
+    // Private Chat State
+    const [showPrivateChat, setShowPrivateChat] = useState(false);
+    const [privateChat, setPrivateChat] = useState([]);
+    const [newPrivateMessage, setNewPrivateMessage] = useState('');
+    const [loadingPrivateChat, setLoadingPrivateChat] = useState(false);
+    const [postingPrivateMessage, setPostingPrivateMessage] = useState(false);
+
     // AI Verification State
     const [showAiModal, setShowAiModal] = useState(false);
     const [aiProofText, setAiProofText] = useState('');
@@ -112,6 +119,7 @@ export default function PostCard({ post, currentUserId }) {
             setClaimCount(prev => prev + 1);
             setShowAiModal(false);
             setAiProofText('');
+            loadPrivateChat();
         } catch (error) {
             console.error('Error submitting claim:', error);
             alert('Failed to submit claim. Please try again.');
@@ -183,12 +191,14 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
         }
 
         setShowComments(true);
+        setShowPrivateChat(false);
         setLoadingComments(true);
         try {
             const { data, error } = await supabase
                 .from('comments')
                 .select('*, profiles:profiles!comments_profiles_fk(full_name, avatar_url)')
                 .eq('post_id', post.id)
+                .eq('is_private', false)
                 .order('created_at', { ascending: true });
 
             if (error) throw error;
@@ -197,6 +207,33 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
             console.error('Error loading comments:', error);
         } finally {
             setLoadingComments(false);
+        }
+    };
+
+    // Load private chat
+    const loadPrivateChat = async () => {
+        if (showPrivateChat) {
+            setShowPrivateChat(false);
+            return;
+        }
+
+        setShowPrivateChat(true);
+        setShowComments(false);
+        setLoadingPrivateChat(true);
+        try {
+            const { data, error } = await supabase
+                .from('comments')
+                .select('*, profiles:profiles!comments_profiles_fk(full_name, avatar_url)')
+                .eq('post_id', post.id)
+                .eq('is_private', true)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+            setPrivateChat(data || []);
+        } catch (error) {
+            console.error('Error loading private chat:', error);
+        } finally {
+            setLoadingPrivateChat(false);
         }
     };
 
@@ -226,6 +263,35 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
             alert('Failed to post comment.');
         } finally {
             setPostingComment(false);
+        }
+    };
+
+    // Post a private message
+    const handlePostPrivateMessage = async (e) => {
+        e.preventDefault();
+        if (!newPrivateMessage.trim() || !currentUserId) return;
+
+        setPostingPrivateMessage(true);
+        try {
+            const { data, error } = await supabase
+                .from('comments')
+                .insert({
+                    post_id: post.id,
+                    user_id: currentUserId,
+                    content: newPrivateMessage.trim(),
+                    is_private: true
+                })
+                .select('*, profiles:profiles!comments_profiles_fk(full_name, avatar_url)')
+                .single();
+
+            if (error) throw error;
+            setPrivateChat([...privateChat, data]);
+            setNewPrivateMessage('');
+        } catch (error) {
+            console.error('Error posting private message:', error);
+            alert('Failed to send private message.');
+        } finally {
+            setPostingPrivateMessage(false);
         }
     };
 
@@ -364,6 +430,19 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
                         </button>
                     )}
 
+                    {/* Private Chat Button (only visible if claimed or owner of claimed item) */}
+                    {((isOwner && claimCount > 0) || (!isOwner && claimed)) && (
+                        <button
+                            onClick={loadPrivateChat}
+                            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${showPrivateChat
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-transparent'
+                                }`}
+                        >
+                            <span className="text-[10px]">🔒</span> Chat
+                        </button>
+                    )}
+
                     {/* Comment Button */}
                     <button
                         onClick={loadComments}
@@ -411,19 +490,16 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
                                                 <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-xs font-medium text-slate-500">
                                                     {getAvatarFallback(comment.profiles?.full_name)}
                                                 </div>
-                                                <div className={`flex-1 rounded-xl px-3 py-2 ${comment.is_private ? 'bg-amber-50 border border-amber-100' : 'bg-slate-50'}`}>
+                                                <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2">
                                                     <div className="flex items-center gap-2 mb-0.5">
-                                                        <span className={`text-xs font-semibold ${comment.is_private ? 'text-amber-900' : 'text-slate-800'}`}>
+                                                        <span className="text-xs font-semibold text-slate-800">
                                                             {comment.profiles?.full_name || 'Anonymous'}
-                                                            {comment.is_private && <span className="ml-1 text-amber-600">🔒 (Private)</span>}
                                                         </span>
-                                                        <span className={`text-[10px] ${comment.is_private ? 'text-amber-500' : 'text-slate-400'}`}>
+                                                        <span className="text-[10px] text-slate-400">
                                                             {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                                                         </span>
                                                     </div>
-                                                    <p className={`text-sm ${comment.is_private ? 'text-amber-800 font-medium' : 'text-slate-600'}`}>
-                                                        {comment.content}
-                                                    </p>
+                                                    <p className="text-sm text-slate-600">{comment.content}</p>
                                                 </div>
                                             </div>
                                         ))
@@ -454,6 +530,70 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
                                     </form>
                                 ) : (
                                     <p className="text-sm text-slate-400 text-center">Sign in to comment</p>
+                                )}
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* Private Chat Section */}
+                {showPrivateChat && (
+                    <div className="mt-4 pt-4 border-t border-amber-100 bg-amber-50/30 -mx-4 px-4 pb-2 animate-fade-in">
+                        {loadingPrivateChat ? (
+                            <div className="flex items-center justify-center py-4">
+                                <Loader2 className="w-5 h-5 animate-spin text-amber-400" />
+                            </div>
+                        ) : (
+                            <>
+                                <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
+                                    {privateChat.length === 0 ? (
+                                        <p className="text-sm text-amber-600/70 text-center py-2">Private chat started. Send a message to the owner!</p>
+                                    ) : (
+                                        privateChat.map(msg => (
+                                            <div key={msg.id} className="flex gap-2.5">
+                                                <div className="w-7 h-7 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0 text-xs font-medium text-amber-700">
+                                                    {getAvatarFallback(msg.profiles?.full_name)}
+                                                </div>
+                                                <div className="flex-1 rounded-xl px-3 py-2 bg-amber-100 border border-amber-200">
+                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                        <span className="text-xs font-semibold text-amber-900">
+                                                            {msg.profiles?.full_name || 'Anonymous'}
+                                                        </span>
+                                                        <span className="text-[10px] text-amber-600">
+                                                            {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-amber-800 font-medium">
+                                                        {msg.content}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Private Chat input */}
+                                {currentUserId && (
+                                    <form onSubmit={handlePostPrivateMessage} className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newPrivateMessage}
+                                            onChange={(e) => setNewPrivateMessage(e.target.value)}
+                                            placeholder="Write a private message..."
+                                            className="flex-1 px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all placeholder:text-amber-300 text-amber-900"
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={!newPrivateMessage.trim() || postingPrivateMessage}
+                                            className="p-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {postingPrivateMessage ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Send className="w-4 h-4" />
+                                            )}
+                                        </button>
+                                    </form>
                                 )}
                             </>
                         )}
