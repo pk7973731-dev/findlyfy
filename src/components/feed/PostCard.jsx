@@ -325,8 +325,8 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
                             <CheckCircle2 className="w-4 h-4" />
                             <span>Resolved — Item returned</span>
                         </div>
-                    ) : false ? (
-                        /* Owner always sees status (Temporarily disabled for testing) */
+                    ) : isOwner ? (
+                        /* Owner always sees status */
                         <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-1 justify-center ${claimCount > 0
                             ? 'bg-amber-50 text-amber-700 border border-amber-200'
                             : 'bg-slate-50 text-slate-500 border border-slate-200'
