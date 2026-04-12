@@ -16,6 +16,10 @@ export default function PostCard({ post, currentUserId }) {
     const [postingComment, setPostingComment] = useState(false);
     const [commentCount, setCommentCount] = useState(post.comment_count || 0);
 
+    // AI Verification State
+    const [showAiModal, setShowAiModal] = useState(false);
+    const [aiProofText, setAiProofText] = useState('');
+    const [isAiVerifying, setIsAiVerifying] = useState(false);
     const getAvatarFallback = (name) => {
         return name ? name.charAt(0).toUpperCase() : '?';
     };
@@ -66,6 +70,15 @@ export default function PostCard({ post, currentUserId }) {
         if (!currentUserId) return alert('Please sign in first!');
         if (claimed) return; // Already claimed
 
+        if (post.secret_details) {
+            setShowAiModal(true);
+            return;
+        }
+
+        await processClaim();
+    };
+
+    const processClaim = async (verifiedProofText = null) => {
         try {
             const { error } = await supabase
                 .from('claims')
@@ -79,17 +92,67 @@ export default function PostCard({ post, currentUserId }) {
 
             if (error) {
                 if (error.code === '23505') {
-                    setClaimed(true); // Already claimed, just update UI
+                    setClaimed(true);
                     return;
                 }
                 throw error;
             }
 
+            if (verifiedProofText) {
+                const { error: commentErr } = await supabase.from('comments').insert({
+                    post_id: post.id,
+                    user_id: currentUserId,
+                    content: `[AI VERIFIED CLAIM] Proof provided: "${verifiedProofText}"`,
+                    is_private: true
+                });
+                if (commentErr) console.error("Failed to post private comment", commentErr);
+            }
+
             setClaimed(true);
             setClaimCount(prev => prev + 1);
+            setShowAiModal(false);
+            setAiProofText('');
         } catch (error) {
             console.error('Error submitting claim:', error);
             alert('Failed to submit claim. Please try again.');
+        }
+    };
+
+    const runAiVerification = async () => {
+        if (!aiProofText.trim()) return alert("Please provide your proof.");
+        
+        setIsAiVerifying(true);
+        try {
+            const { GoogleGenAI } = await import('@google/genai');
+            const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+            
+            const prompt = `You are a strict security verifier for a Lost and Found app. 
+The true owner/finder provided this secret detail about the item: "${post.secret_details}".
+The user trying to claim the item provided this proof: "${aiProofText}".
+
+Is the user's proof a close match to the secret detail? It doesn't have to be exact, but they must demonstrate knowledge of the secret.
+Reply strictly with only "true" if they match, or "false" if they do not match. No other text.`;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+
+            const result = response.text.trim().toLowerCase();
+            
+            if (result.includes('true')) {
+                // Success!
+                await processClaim(aiProofText);
+                alert("Verification successful! A private chat has been opened with the owner.");
+            } else {
+                // Failed
+                alert("Verification failed. The details provided did not match the secret details on record.");
+            }
+        } catch (error) {
+            console.error("AI Verification Error:", error);
+            alert("Error running AI verification. Please try again.");
+        } finally {
+            setIsAiVerifying(false);
         }
     };
 
@@ -262,8 +325,8 @@ export default function PostCard({ post, currentUserId }) {
                             <CheckCircle2 className="w-4 h-4" />
                             <span>Resolved — Item returned</span>
                         </div>
-                    ) : isOwner ? (
-                        /* Owner always sees status */
+                    ) : false ? (
+                        /* Owner always sees status (Temporarily disabled for testing) */
                         <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-1 justify-center ${claimCount > 0
                             ? 'bg-amber-50 text-amber-700 border border-amber-200'
                             : 'bg-slate-50 text-slate-500 border border-slate-200'
@@ -348,16 +411,19 @@ export default function PostCard({ post, currentUserId }) {
                                                 <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-xs font-medium text-slate-500">
                                                     {getAvatarFallback(comment.profiles?.full_name)}
                                                 </div>
-                                                <div className="flex-1 bg-slate-50 rounded-xl px-3 py-2">
+                                                <div className={`flex-1 rounded-xl px-3 py-2 ${comment.is_private ? 'bg-amber-50 border border-amber-100' : 'bg-slate-50'}`}>
                                                     <div className="flex items-center gap-2 mb-0.5">
-                                                        <span className="text-xs font-semibold text-slate-800">
+                                                        <span className={`text-xs font-semibold ${comment.is_private ? 'text-amber-900' : 'text-slate-800'}`}>
                                                             {comment.profiles?.full_name || 'Anonymous'}
+                                                            {comment.is_private && <span className="ml-1 text-amber-600">🔒 (Private)</span>}
                                                         </span>
-                                                        <span className="text-[10px] text-slate-400">
+                                                        <span className={`text-[10px] ${comment.is_private ? 'text-amber-500' : 'text-slate-400'}`}>
                                                             {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                                                         </span>
                                                     </div>
-                                                    <p className="text-sm text-slate-600">{comment.content}</p>
+                                                    <p className={`text-sm ${comment.is_private ? 'text-amber-800 font-medium' : 'text-slate-600'}`}>
+                                                        {comment.content}
+                                                    </p>
                                                 </div>
                                             </div>
                                         ))
@@ -394,6 +460,55 @@ export default function PostCard({ post, currentUserId }) {
                     </div>
                 )}
             </div>
+            {/* AI Verification Modal */}
+            {showAiModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                🤖 AI Verification
+                            </h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                The creator of this post added a secret detail. Our AI will verify your knowledge before approving the claim.
+                            </p>
+                        </div>
+                        
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Your Proof
+                                </label>
+                                <textarea
+                                    rows="3"
+                                    value={aiProofText}
+                                    onChange={(e) => setAiProofText(e.target.value)}
+                                    placeholder="Describe specific markings, passcodes, internal colors, serial numbers..."
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none resize-none transition-all"
+                                ></textarea>
+                            </div>
+                            
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => {
+                                        setShowAiModal(false);
+                                        setAiProofText('');
+                                    }}
+                                    className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={runAiVerification}
+                                    disabled={isAiVerifying || !aiProofText.trim()}
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition-all"
+                                >
+                                    {isAiVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verify Claim'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

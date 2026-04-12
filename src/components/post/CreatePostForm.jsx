@@ -15,7 +15,8 @@ export default function CreatePostForm({ session }) {
         category: '',
         location: '',
         description: '',
-        image: null
+        image: null,
+        secret_details: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -25,7 +26,7 @@ export default function CreatePostForm({ session }) {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const nextStep = () => setStep(prev => Math.min(prev + 1, 3));
+    const nextStep = () => setStep(prev => Math.min(prev + 1, 4));
     const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
     const handleSubmit = async () => {
@@ -65,6 +66,7 @@ export default function CreatePostForm({ session }) {
                 location: formData.location,
                 description: formData.description,
                 image_url: imageUrl,
+                secret_details: formData.secret_details,
                 status: 'active'
             };
 
@@ -271,6 +273,31 @@ export default function CreatePostForm({ session }) {
                         </div>
                     )}
 
+                    {/* Step 4: AI Verification Details */}
+                    {step === 4 && (
+                        <div className="space-y-6 animate-fade-in">
+                            <h2 className="text-lg font-bold text-slate-900 border-b border-slate-100 pb-4">
+                                Secret Details (Optional AI Verification)
+                            </h2>
+                            <p className="text-sm text-slate-600 mb-4">
+                                Provide a secret detail only the true owner/finder would know. When someone claims this item, our AI will ask them to prove they know this detail before allowing the claim.
+                            </p>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    Secret Details
+                                </label>
+                                <textarea
+                                    rows="3"
+                                    value={formData.secret_details}
+                                    onChange={(e) => updateForm('secret_details', e.target.value)}
+                                    placeholder="e.g., 'The lock screen is a picture of a dog' or 'There is a scratch on the bottom left corner'"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all outline-none resize-none"
+                                ></textarea>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Navigation Buttons */}
                     <div className="mt-10 flex items-center justify-between border-t border-slate-100 pt-6">
                         <button
@@ -285,7 +312,7 @@ export default function CreatePostForm({ session }) {
                             <ChevronLeft className="w-5 h-5" /> Back
                         </button>
 
-                        {step < 3 ? (
+                        {step < 4 ? (
                             <button
                                 type="button"
                                 onClick={nextStep}
