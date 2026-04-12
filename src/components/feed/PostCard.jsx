@@ -22,6 +22,7 @@ export default function PostCard({ post, currentUserId }) {
     const [newPrivateMessage, setNewPrivateMessage] = useState('');
     const [loadingPrivateChat, setLoadingPrivateChat] = useState(false);
     const [postingPrivateMessage, setPostingPrivateMessage] = useState(false);
+    const [replyingTo, setReplyingTo] = useState(null);
 
     // AI Verification State
     const [showAiModal, setShowAiModal] = useState(false);
@@ -273,20 +274,34 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
 
         setPostingPrivateMessage(true);
         try {
+            let recipientId = null;
+            if (isOwner && replyingTo) {
+                recipientId = replyingTo.id;
+            } else if (!isOwner) {
+                recipientId = post.user_id;
+            }
+
+            const payload = {
+                post_id: post.id,
+                user_id: currentUserId,
+                content: newPrivateMessage.trim(),
+                is_private: true
+            };
+
+            if (recipientId) {
+                payload.recipient_id = recipientId;
+            }
+
             const { data, error } = await supabase
                 .from('comments')
-                .insert({
-                    post_id: post.id,
-                    user_id: currentUserId,
-                    content: newPrivateMessage.trim(),
-                    is_private: true
-                })
+                .insert(payload)
                 .select('*, profiles:profiles!comments_profiles_fk(full_name, avatar_url)')
                 .single();
 
             if (error) throw error;
             setPrivateChat([...privateChat, data]);
             setNewPrivateMessage('');
+            setReplyingTo(null);
         } catch (error) {
             console.error('Error posting private message:', error);
             alert('Failed to send private message.');
@@ -555,15 +570,25 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
                                                     {getAvatarFallback(msg.profiles?.full_name)}
                                                 </div>
                                                 <div className="flex-1 rounded-xl px-3 py-2 bg-amber-100 border border-amber-200">
-                                                    <div className="flex items-center gap-2 mb-0.5">
-                                                        <span className="text-xs font-semibold text-amber-900">
-                                                            {msg.profiles?.full_name || 'Anonymous'}
-                                                        </span>
-                                                        <span className="text-[10px] text-amber-600">
-                                                            {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
-                                                        </span>
+                                                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-semibold text-amber-900">
+                                                                {msg.profiles?.full_name || 'Anonymous'}
+                                                            </span>
+                                                            <span className="text-[10px] text-amber-600">
+                                                                {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                                                            </span>
+                                                        </div>
+                                                        {isOwner && msg.user_id !== currentUserId && (
+                                                            <button 
+                                                                onClick={() => setReplyingTo({ id: msg.user_id, name: msg.profiles?.full_name || 'Anonymous' })}
+                                                                className="text-[10px] font-bold text-amber-600 hover:text-amber-800 transition-colors uppercase tracking-wider bg-amber-200/50 hover:bg-amber-200 px-2 py-0.5 rounded"
+                                                            >
+                                                                ↩ Reply
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                    <p className="text-sm text-amber-800 font-medium">
+                                                    <p className="text-sm text-amber-800 font-medium whitespace-pre-wrap">
                                                         {msg.content}
                                                     </p>
                                                 </div>
@@ -574,26 +599,43 @@ Reply strictly with only "true" if they match, or "false" if they do not match. 
 
                                 {/* Private Chat input */}
                                 {currentUserId && (
-                                    <form onSubmit={handlePostPrivateMessage} className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={newPrivateMessage}
-                                            onChange={(e) => setNewPrivateMessage(e.target.value)}
-                                            placeholder="Write a private message..."
-                                            className="flex-1 px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all placeholder:text-amber-300 text-amber-900"
-                                        />
-                                        <button
-                                            type="submit"
-                                            disabled={!newPrivateMessage.trim() || postingPrivateMessage}
-                                            className="p-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {postingPrivateMessage ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <Send className="w-4 h-4" />
-                                            )}
-                                        </button>
-                                    </form>
+                                    <div className="flex flex-col gap-2">
+                                        {replyingTo && (
+                                            <div className="flex items-center justify-between bg-amber-200/50 px-3 py-1.5 rounded-lg border border-amber-300">
+                                                <span className="text-xs font-semibold text-amber-800">
+                                                    Replying securely to {replyingTo.name}
+                                                </span>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setReplyingTo(null)}
+                                                    className="text-amber-600 hover:text-amber-900 font-bold"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        )}
+                                        <form onSubmit={handlePostPrivateMessage} className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={newPrivateMessage}
+                                                onChange={(e) => setNewPrivateMessage(e.target.value)}
+                                                placeholder={isOwner ? "Select a reply above to message them..." : "Write a private message..."}
+                                                disabled={isOwner && !replyingTo}
+                                                className="flex-1 px-4 py-2.5 bg-white border border-amber-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all placeholder:text-amber-300 text-amber-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            />
+                                            <button
+                                                type="submit"
+                                                disabled={!newPrivateMessage.trim() || postingPrivateMessage || (isOwner && !replyingTo)}
+                                                className="p-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {postingPrivateMessage ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Send className="w-4 h-4" />
+                                                )}
+                                            </button>
+                                        </form>
+                                    </div>
                                 )}
                             </>
                         )}
